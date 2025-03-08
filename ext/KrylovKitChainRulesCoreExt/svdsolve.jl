@@ -163,15 +163,17 @@ function compute_svdsolve_pullback_data(Δvals, Δlvecs, Δrvecs, vals, lvecs, r
     aVdΔV = rmul!(VdΔV - VdΔV', 1 / 2)
 
     tol = alg_primal.tol
+    vtol = tol * norm(vals, Inf)
+    gtol = tol * max(norm(vals, Inf), one(norm(vals, Inf)))
     if alg_rrule.verbosity >= WARN_LEVEL
-        mask = abs.(vals' .- vals) .< tol
+        mask = abs.(vals' .- vals) .< vtol
         gaugepart = view(aUdΔU, mask) + view(aVdΔV, mask)
         gauge = norm(gaugepart, Inf)
-        gauge > alg_primal.tol &&
+        gauge > gtol &&
             @warn "`svdsolve` cotangents for singular vectors are sensitive to gauge choice: (|gauge| = $gauge)"
     end
-    UdΔAV = (aUdΔU .+ aVdΔV) .* safe_inv.(vals' .- vals, tol) .+
-            (aUdΔU .- aVdΔV) .* safe_inv.(vals' .+ vals, tol)
+    UdΔAV = (aUdΔU .+ aVdΔV) .* safe_inv.(vals' .- vals, vtol) .+
+            (aUdΔU .- aVdΔV) .* safe_inv.(vals' .+ vals, vtol)
     if !(Δvals isa ZeroTangent)
         UdΔAV[diagind(UdΔAV)] .+= real.(Δvals)
     end

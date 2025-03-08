@@ -187,15 +187,16 @@ function compute_eigsolve_pullback_data(Δvals, Δvecs, vals, vecs, info, which,
 
     # components along subspace spanned by current eigenvectors
     tol = alg_primal.tol
+    vtol = tol * norm(vals, Inf)
     if alg_rrule.verbosity >= WARN_LEVEL
-        mask = abs.(transpose(vals) .- vals) .< tol
+        mask = abs.(transpose(vals) .- vals) .< vtol
         gaugepart = VdΔV[mask] - Diagonal(real(diag(VdΔV)))[mask]
         Δgauge = norm(gaugepart, Inf)
         Δgauge > tol &&
             @warn "`eigsolve` cotangents sensitive to gauge choice: (|Δgauge| = $Δgauge)"
     end
     VdΔV′ = VdΔV - G * Diagonal(diag(VdΔV) ./ diag(G))
-    aVdΔV = VdΔV′ .* conj.(safe_inv.(transpose(vals) .- vals, tol))
+    aVdΔV = VdΔV′ .* conj.(safe_inv.(transpose(vals) .- vals, vtol))
     for i in 1:n
         aVdΔV[i, i] += Δvals[i]
     end
@@ -310,15 +311,17 @@ function compute_eigsolve_pullback_data(Δvals, Δvecs, vals, vecs, info, which,
 
     # components along subspace spanned by current eigenvectors
     tol = alg_primal.tol
+    vtol = tol * norm(vals, Inf)
+    gtol = tol * max(norm(vals, Inf), one(norm(vals, Inf)))
     aVdΔV = rmul!(VdΔV - VdΔV', 1 / 2)
     if alg_rrule.verbosity >= WARN_LEVEL
-        mask = abs.(transpose(vals) .- vals) .< tol
+        mask = abs.(transpose(vals) .- vals) .< vtol
         gaugepart = view(aVdΔV, mask)
         gauge = norm(gaugepart, Inf)
-        gauge > tol &&
+        gauge > gtol &&
             @warn "`eigsolve` cotangents sensitive to gauge choice: (|gauge| = $gauge)"
     end
-    aVdΔV .= aVdΔV .* safe_inv.(transpose(vals) .- vals, tol)
+    aVdΔV .= aVdΔV .* safe_inv.(transpose(vals) .- vals, vtol)
     for i in 1:n
         aVdΔV[i, i] += real(Δvals[i])
     end
